@@ -6,8 +6,8 @@ import JoinQueue from './pages/JoinQueue';
 import TokenConfirmation from './pages/TokenConfirmation';
 import LiveStatus from './pages/LiveStatus';
 
-// Default connection to backend running on port 5000
-const socket = io('http://localhost:5000');
+// Default connection to backend running on Onrender
+const socket = io('https://skipq-backend-zcmw.onrender.com');
 
 export const SocketContext = React.createContext();
 
@@ -31,7 +31,7 @@ function App() {
           <h1 className="text-3xl font-bold tracking-tight text-gray-900">SkipQ</h1>
           <div className={`w-3 h-3 rounded-full ${isConnected ? 'bg-green-500' : 'bg-red-500'}`} title={isConnected ? 'Connected' : 'Disconnected'}></div>
         </header>
-        <main className="w-full flex-1 w-full bg-white shadow-xl rounded-3xl overflow-hidden relative">
+        <main className="flex-1 w-full bg-white shadow-xl rounded-3xl overflow-hidden relative">
           <Routes>
             <Route path="/" element={<Home />} />
             <Route path="/join" element={<JoinQueue />} />

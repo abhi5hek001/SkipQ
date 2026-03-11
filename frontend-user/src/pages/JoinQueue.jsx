@@ -16,7 +16,7 @@ const JoinQueue = () => {
       // Simulate taking some time to "pay"
       await new Promise(resolve => setTimeout(resolve, 1500));
 
-      const res = await fetch('http://localhost:5000/api/queue/join', {
+      const res = await fetch('https://skipq-backend-zcmw.onrender.com/api/queue/join', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ vendorId })

@@ -3,7 +3,7 @@ import { Routes, Route } from 'react-router-dom';
 import { io } from 'socket.io-client';
 import Dashboard from './pages/Dashboard';
 
-const socket = io('http://localhost:5000');
+const socket = io('https://skipq-backend-zcmw.onrender.com');
 
 export const SocketContext = React.createContext();
 

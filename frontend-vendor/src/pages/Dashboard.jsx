@@ -16,8 +16,8 @@ const Dashboard = () => {
   const fetchData = async () => {
     try {
       const [statusRes, analyticsRes] = await Promise.all([
-        fetch(`http://localhost:5000/api/queue/status/${vendorId}`),
-        fetch(`http://localhost:5000/api/vendor/analytics/${vendorId}`)
+        fetch(`https://skipq-backend-zcmw.onrender.com/api/queue/status/${vendorId}`),
+        fetch(`https://skipq-backend-zcmw.onrender.com/api/vendor/analytics/${vendorId}`)
       ]);
       const statusData = await statusRes.json();
       const analyticsData = await analyticsRes.json();
@@ -47,7 +47,7 @@ const Dashboard = () => {
   const handleAction = async (action) => {
     setActionLoading(true);
     try {
-      await fetch(`http://localhost:5000/api/vendor/${action}`, {
+      await fetch(`https://skipq-backend-zcmw.onrender.com/api/vendor/${action}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ vendorId })

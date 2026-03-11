@@ -20,7 +20,7 @@ const LiveStatus = () => {
   const fetchStatus = async () => {
     try {
       // Hardcoding vendorId as 1 for simulation since it's the main vendor
-      const res = await fetch(`http://localhost:5000/api/queue/status/1`);
+      const res = await fetch(`https://skipq-backend-zcmw.onrender.com/api/queue/status/1`);
       const data = await res.json();
       setQueueData(data);
       setLoading(false);
@@ -77,7 +77,7 @@ const LiveStatus = () => {
   const cancelQueue = async () => {
     if (window.confirm('Are you sure you want to leave the queue?')) {
       try {
-        await fetch('http://localhost:5000/api/queue/cancel', {
+        await fetch('https://skipq-backend-zcmw.onrender.com/api/queue/cancel', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ tokenId })
