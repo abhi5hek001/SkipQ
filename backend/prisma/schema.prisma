@@ -6,7 +6,7 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "mysql"
   url      = env("DATABASE_URL")
 }
 
@@ -39,7 +39,14 @@ model Token {
   queue        Queue    @relation(fields: [queueId], references: [id])
   tokenNumber  String   // e.g. A15
   position     Int      // e.g. 15
-  status       String   @default("WAITING") // WAITING, SERVED, SKIPPED, CANCELLED
+  status       Status   @default(WAITING) // WAITING, SERVED, SKIPPED, CANCELLED
   joinedAt     DateTime @default(now())
   servedAt     DateTime?
+}
+
+enum Status {
+  WAITING
+  SERVED
+  SKIPPED
+  CANCELLED
 }
