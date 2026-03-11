@@ -1,0 +1,45 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Vendor {
+  id        Int      @id @default(autoincrement())
+  name      String
+  email     String   @unique
+  createdAt DateTime @default(now())
+  queues    Queue[]
+}
+
+model Queue {
+  id           Int      @id @default(autoincrement())
+  vendorId     Int
+  vendor       Vendor   @relation(fields: [vendorId], references: [id])
+  name         String   @default("Main Queue")
+  prefix       String   @default("A") // e.g. Token A1, A2
+  currentToken Int      @default(0)
+  totalTokens  Int      @default(0)
+  avgWaitTime  Int      @default(300) // in seconds, e.g. 5 min
+  createdAt    DateTime @default(now())
+  tokens       Token[]
+
+  @@unique([vendorId, name])
+}
+
+model Token {
+  id           Int      @id @default(autoincrement())
+  queueId      Int
+  queue        Queue    @relation(fields: [queueId], references: [id])
+  tokenNumber  String   // e.g. A15
+  position     Int      // e.g. 15
+  status       String   @default("WAITING") // WAITING, SERVED, SKIPPED, CANCELLED
+  joinedAt     DateTime @default(now())
+  servedAt     DateTime?
+}
