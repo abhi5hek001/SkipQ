@@ -93,8 +93,8 @@ router.post('/reset', async (req, res) => {
   }
 });
 
-// Analytics
-router.get('/analytics/:vendorId', async (req, res) => {
+// Stats (Renamed from Analytics to bypass AdBlockers)
+router.get('/stats/:vendorId', async (req, res) => {
   try {
     const queue = await prisma.queue.findFirst({ where: { vendorId: Number(req.params.vendorId) } });
     if (!queue) return res.status(404).json({ error: 'Queue not found' });

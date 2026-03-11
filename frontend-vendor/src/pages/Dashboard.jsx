@@ -17,7 +17,7 @@ const Dashboard = () => {
     try {
       const [statusRes, analyticsRes] = await Promise.all([
         fetch(`https://skipq-backend-zcmw.onrender.com/api/queue/status/${vendorId}`),
-        fetch(`https://skipq-backend-zcmw.onrender.com/api/vendor/analytics/${vendorId}`)
+        fetch(`https://skipq-backend-zcmw.onrender.com/api/vendor/stats/${vendorId}`)
       ]);
       const statusData = await statusRes.json();
       const analyticsData = await analyticsRes.json();
