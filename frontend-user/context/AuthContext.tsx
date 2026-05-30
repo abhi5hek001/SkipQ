@@ -26,7 +26,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (!fcmToken) return;
       api.patch('/users/me/fcm-token', { fcmToken }, {
         headers: { Authorization: `Bearer ${stored}` },
-      }).catch(() => {});
+      }).then(() => console.log('[FCM] Token registered with backend'))
+        .catch((e) => console.error('[FCM] Backend registration failed:', e));
     });
   }, []);
 
@@ -38,7 +39,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (!fcmToken) return;
       api.patch('/users/me/fcm-token', { fcmToken }, {
         headers: { Authorization: `Bearer ${t}` },
-      }).catch(() => {});
+      }).then(() => console.log('[FCM] Token registered with backend'))
+        .catch((e) => console.error('[FCM] Backend registration failed:', e));
     });
   };
 
