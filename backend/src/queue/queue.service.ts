@@ -5,6 +5,7 @@ import {
   ForbiddenException,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { EventsService } from '../events/events.service';
 import { OrderStatus } from '@prisma/client';
 
 // Valid vendor-driven transitions
@@ -25,7 +26,10 @@ const TRANSITION_TIMESTAMP: Partial<Record<OrderStatus, string>> = {
 
 @Injectable()
 export class QueueService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly events: EventsService,
+  ) {}
 
   async getVendorQueue(userId: string, shopId: string) {
     await this.assertShopOwnership(userId, shopId);
@@ -91,6 +95,9 @@ export class QueueService {
       }),
     ]);
 
+    this.events.emitOrderStatusChanged(orderId, { status: nextStatus });
+    this.events.emitQueueOrderUpdated(order.shop.vendor.userId, { orderId, status: nextStatus });
+
     return updatedOrder;
   }
 
@@ -120,6 +127,8 @@ export class QueueService {
         },
       }),
     ]);
+
+    this.events.emitOrderStatusChanged(orderId, { status: OrderStatus.CANCELLED });
 
     return updated;
   }

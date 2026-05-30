@@ -5,6 +5,7 @@ import {
   ForbiddenException,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { EventsService } from '../events/events.service';
 import { CreateOrderDto } from './dto/create-order.dto';
 import { OrderStatus } from '@prisma/client';
 
@@ -16,7 +17,10 @@ const ACTIVE_STATUSES: OrderStatus[] = [
 
 @Injectable()
 export class OrdersService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly events: EventsService,
+  ) {}
 
   async create(customerId: string, dto: CreateOrderDto) {
     const shop = await this.prisma.shop.findUnique({ where: { id: dto.shopId } });
@@ -138,6 +142,9 @@ export class OrdersService {
     ]);
 
     const queuePosition = await this.computePosition(order.shopId, entry.joinedAt);
+    this.events.emitOrderStatusChanged(orderId, { status: OrderStatus.QUEUED, queuePosition });
+    this.events.emitQueueNewOrder(order.shopId, { orderId, tokenDisplay: entry.tokenDisplay, totalAmount: order.totalAmount });
+
     return { ...updatedOrder, queueEntry: entry, queuePosition };
   }
 
@@ -171,6 +178,8 @@ export class OrdersService {
         },
       }),
     ]);
+
+    this.events.emitOrderStatusChanged(orderId, { status: OrderStatus.CANCELLED });
 
     return updated[0];
   }

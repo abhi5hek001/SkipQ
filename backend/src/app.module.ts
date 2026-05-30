@@ -9,6 +9,7 @@ import { MenuModule } from './menu/menu.module';
 import { OrdersModule } from './orders/orders.module';
 import { QueueModule } from './queue/queue.module';
 import { PaymentsModule } from './payments/payments.module';
+import { EventsModule } from './events/events.module';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 
@@ -24,7 +25,8 @@ import { AppService } from './app.service';
     OrdersModule,
     QueueModule,
     PaymentsModule,
-    // Coming next: NotificationsModule, WebSocketGateway
+    EventsModule,
+    // Coming next: NotificationsModule
   ],
   controllers: [AppController],
   providers: [AppService],

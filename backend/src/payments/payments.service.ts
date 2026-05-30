@@ -10,6 +10,7 @@ import {
 import Razorpay from 'razorpay';
 import { PrismaService } from '../prisma/prisma.service';
 import { OrdersService } from '../orders/orders.service';
+import { EventsService } from '../events/events.service';
 import { OrderStatus, PaymentStatus, PaymentType, RefundStatus } from '@prisma/client';
 
 @Injectable()
@@ -20,6 +21,7 @@ export class PaymentsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly ordersService: OrdersService,
+    private readonly events: EventsService,
   ) {
     this.razorpay = new Razorpay({
       key_id: process.env.RAZORPAY_KEY_ID ?? '',
@@ -250,6 +252,9 @@ export class PaymentsService {
           },
         }),
       ]);
+
+      this.events.emitOrderStatusChanged(order.id, { status: OrderStatus.QUEUED });
+      this.events.emitQueueNewOrder(order.shopId, { orderId: order.id, tokenDisplay, totalAmount: order.totalAmount });
     } else {
       // REMAINING payment: mark complete
       await this.prisma.$transaction([
@@ -278,6 +283,8 @@ export class PaymentsService {
           },
         }),
       ]);
+
+      this.events.emitOrderStatusChanged(order.id, { status: OrderStatus.COMPLETED });
     }
   }
 
