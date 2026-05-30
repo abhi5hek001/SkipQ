@@ -133,9 +133,19 @@ export default function OrderStatusPage() {
           email: '',
         },
         theme: { color: '#f97316' },
-        handler: () => {
-          setAwaitingWebhook(true);
+        handler: async () => {
           setPaying(false);
+          if (process.env.NEXT_PUBLIC_PAYMENT_MOCK === 'true') {
+            // Dev: webhook can't reach localhost — call mock-pay to confirm payment
+            try {
+              const { data } = await api.patch(`/orders/${orderId}/mock-pay`);
+              setOrder((prev) => prev ? { ...prev, ...data } : prev);
+            } catch {
+              setAwaitingWebhook(true); // fallback to polling if mock-pay fails
+            }
+          } else {
+            setAwaitingWebhook(true); // prod: wait for real webhook via WebSocket
+          }
         },
         modal: {
           ondismiss: () => setPaying(false),
