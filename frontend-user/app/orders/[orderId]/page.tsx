@@ -126,10 +126,16 @@ export default function OrderStatusPage() {
         currency: payment.currency ?? 'INR',
         order_id: payment.razorpayOrderId,
         name: 'SkipQ',
-        description: type === 'token' ? 'Queue token payment' : 'Order balance payment',
+        description: order?.shop?.name ?? 'Food order',
+        prefill: {
+          contact: payment.customerPhone ?? '',
+          name: payment.customerName ?? '',
+          email: '',
+        },
         theme: { color: '#f97316' },
         handler: () => {
           setAwaitingWebhook(true);
+          setPaying(false);
         },
         modal: {
           ondismiss: () => setPaying(false),

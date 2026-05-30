@@ -32,7 +32,10 @@ export class PaymentsService {
   }
 
   async createTokenPayment(orderId: string, customerId: string) {
-    const order = await this.prisma.order.findUnique({ where: { id: orderId } });
+    const order = await this.prisma.order.findUnique({
+      where: { id: orderId },
+      include: { customer: { select: { phone: true, name: true } } },
+    });
     if (!order) throw new NotFoundException('Order not found');
     if (order.customerId !== customerId) throw new ForbiddenException();
     if (order.status !== OrderStatus.PENDING_PAYMENT) {
@@ -43,7 +46,7 @@ export class PaymentsService {
       where: { orderId, type: PaymentType.TOKEN, status: PaymentStatus.PENDING },
     });
     if (existing) {
-      return this.buildPaymentResponse(existing);
+      return this.buildPaymentResponse(existing, order.customer);
     }
 
     // Charge full amount: food cost + Rs. 5 platform fee
@@ -59,12 +62,12 @@ export class PaymentsService {
         orderId,
         razorpayOrderId: rzpOrder.id,
         type: PaymentType.TOKEN,
-        amount: order.tokenAmount,
+        amount: order.totalAmount, // full charge (food + platform fee)
         status: PaymentStatus.PENDING,
       },
     });
 
-    return this.buildPaymentResponse(payment);
+    return this.buildPaymentResponse(payment, order.customer);
   }
 
   async createRemainingPayment(orderId: string, customerId: string) {
@@ -406,13 +409,18 @@ export class PaymentsService {
     return { nextToken, tokenDisplay: 'A' + String(nextToken).padStart(3, '0') };
   }
 
-  private buildPaymentResponse(payment: { razorpayOrderId: string; amount: unknown; type: string }) {
+  private buildPaymentResponse(
+    payment: { razorpayOrderId: string; amount: unknown; type: string },
+    customer?: { phone: string; name: string | null } | null,
+  ) {
     return {
       razorpayOrderId: payment.razorpayOrderId,
       amount: payment.amount,
       currency: 'INR',
       type: payment.type,
       keyId: process.env.RAZORPAY_KEY_ID,
+      customerPhone: customer?.phone ?? null,
+      customerName: customer?.name ?? null,
     };
   }
 }
