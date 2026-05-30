@@ -120,9 +120,9 @@ export default function OrderStatusPage() {
       const loaded = await loadRazorpayScript();
       if (!loaded) { setError('Failed to load payment gateway. Check your connection.'); return; }
 
-      // Razorpay UPI requires exactly 10 digits — strip +91 / 91 prefix if present
-      const rawPhone = payment.customerPhone ?? '';
-      const contact = rawPhone.replace(/^\+?91/, '').replace(/\D/g, '').slice(-10);
+      // Razorpay UPI requires exactly 10 digits.
+      // Remove all non-digits then take the last 10 — handles +91, 91, or bare 10-digit formats safely.
+      const contact = (payment.customerPhone ?? '').replace(/\D/g, '').slice(-10);
 
       const options = {
         key: payment.keyId,
