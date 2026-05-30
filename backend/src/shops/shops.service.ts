@@ -13,6 +13,20 @@ export class ShopsService {
     return this.prisma.shop.create({ data: { vendorId: vendor.id, ...dto } });
   }
 
+  async findAll() {
+    return this.prisma.shop.findMany({
+      select: {
+        id: true,
+        name: true,
+        description: true,
+        address: true,
+        avgPrepTimeMins: true,
+        isOpen: true,
+      },
+      orderBy: [{ isOpen: 'desc' }, { name: 'asc' }],
+    });
+  }
+
   async findOne(shopId: string) {
     const shop = await this.prisma.shop.findUnique({
       where: { id: shopId },

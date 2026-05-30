@@ -8,7 +8,7 @@ export default function Home() {
   const router = useRouter();
 
   useEffect(() => {
-    router.replace(isLoggedIn ? '/orders' : '/login');
+    router.replace(isLoggedIn ? '/home' : '/login');
   }, [isLoggedIn, router]);
 
   return null;
