@@ -120,6 +120,10 @@ export default function OrderStatusPage() {
       const loaded = await loadRazorpayScript();
       if (!loaded) { setError('Failed to load payment gateway. Check your connection.'); return; }
 
+      // Razorpay UPI requires exactly 10 digits — strip +91 / 91 prefix if present
+      const rawPhone = payment.customerPhone ?? '';
+      const contact = rawPhone.replace(/^\+?91/, '').replace(/\D/g, '').slice(-10);
+
       const options = {
         key: payment.keyId,
         amount: Math.round(Number(payment.amount) * 100),
@@ -128,9 +132,19 @@ export default function OrderStatusPage() {
         name: 'SkipQ',
         description: order?.shop?.name ?? 'Food order',
         prefill: {
-          contact: payment.customerPhone ?? '',
+          contact,
           name: payment.customerName ?? '',
-          email: '',
+          email: 'customer@skipq.app',
+        },
+        config: {
+          display: {
+            blocks: {
+              upi: { name: 'Pay via UPI', instruments: [{ method: 'upi' }] },
+              other: { name: 'Other methods', instruments: [{ method: 'card' }, { method: 'netbanking' }, { method: 'wallet' }] },
+            },
+            sequence: ['block.upi', 'block.other'],
+            preferences: { show_default_blocks: false },
+          },
         },
         theme: { color: '#f97316' },
         handler: async () => {
