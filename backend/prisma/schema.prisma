@@ -1,52 +1,310 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
 generator client {
   provider = "prisma-client-js"
 }
 
 datasource db {
-  provider = "mysql"
-  url      = env("DATABASE_URL")
+  provider = "postgresql"
 }
+
+// ─── Enums ────────────────────────────────────────────────────────────────────
+
+enum UserRole {
+  CUSTOMER
+  VENDOR
+  ADMIN
+}
+
+enum OrderStatus {
+  PENDING_PAYMENT
+  QUEUED
+  ACCEPTED
+  PREPARING
+  READY
+  COMPLETED
+  CANCELLED
+  REFUNDED
+}
+
+enum PaymentStatus {
+  PENDING
+  CAPTURED
+  FAILED
+  REFUNDED
+  PARTIALLY_REFUNDED
+}
+
+enum PaymentType {
+  TOKEN
+  REMAINING
+  FULL
+}
+
+enum RefundStatus {
+  INITIATED
+  PROCESSED
+  FAILED
+}
+
+enum NotificationEvent {
+  QUEUE_JOINED
+  ORDER_ACCEPTED
+  PREPARATION_STARTED
+  READY_FOR_PICKUP
+  ORDER_COMPLETED
+  PAYMENT_SUCCESS
+  REFUND_PROCESSED
+}
+
+// ─── Users ────────────────────────────────────────────────────────────────────
+
+model User {
+  id        String   @id @default(uuid())
+  phone     String   @unique
+  name      String?
+  role      UserRole @default(CUSTOMER)
+  fcmToken  String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  orders        Order[]
+  notifications Notification[]
+  auditLogs     AuditLog[]
+
+  @@index([phone])
+  @@map("users")
+}
+
+// ─── Vendors ──────────────────────────────────────────────────────────────────
 
 model Vendor {
-  id        Int      @id @default(autoincrement())
-  name      String
-  email     String   @unique
-  createdAt DateTime @default(now())
-  queues    Queue[]
-}
-
-model Queue {
-  id           Int      @id @default(autoincrement())
-  vendorId     Int
-  vendor       Vendor   @relation(fields: [vendorId], references: [id])
-  name         String   @default("Main Queue")
-  prefix       String   @default("A") // e.g. Token A1, A2
-  currentToken Int      @default(0)
-  totalTokens  Int      @default(0)
-  avgWaitTime  Int      @default(300) // in seconds, e.g. 5 min
+  id           String   @id @default(uuid())
+  userId       String   @unique
+  businessName String
+  email        String   @unique
+  phone        String
   createdAt    DateTime @default(now())
-  tokens       Token[]
+  updatedAt    DateTime @updatedAt
 
-  @@unique([vendorId, name])
+  shops Shop[]
+
+  @@index([email])
+  @@map("vendors")
 }
 
-model Token {
-  id           Int      @id @default(autoincrement())
-  queueId      Int
-  queue        Queue    @relation(fields: [queueId], references: [id])
-  tokenNumber  String   // e.g. A15
-  position     Int      // e.g. 15
-  status       Status   @default(WAITING) // WAITING, SERVED, SKIPPED, CANCELLED
-  joinedAt     DateTime @default(now())
-  servedAt     DateTime?
+// ─── Shops ────────────────────────────────────────────────────────────────────
+
+model Shop {
+  id              String   @id @default(uuid())
+  vendorId        String
+  vendor          Vendor   @relation(fields: [vendorId], references: [id])
+  name            String
+  description     String?
+  address         String?
+  tokenAmount     Decimal  @default(0) @db.Decimal(10, 2)
+  avgPrepTimeMins Int      @default(10)
+  isOpen          Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  categories  Category[]
+  menuItems   MenuItem[]
+  orders      Order[]
+  queueTokens QueueEntry[]
+
+  @@index([vendorId])
+  @@map("shops")
 }
 
-enum Status {
-  WAITING
-  SERVED
-  SKIPPED
-  CANCELLED
+// ─── Categories ───────────────────────────────────────────────────────────────
+
+model Category {
+  id        String   @id @default(uuid())
+  shopId    String
+  shop      Shop     @relation(fields: [shopId], references: [id])
+  name      String
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  menuItems MenuItem[]
+
+  @@unique([shopId, name])
+  @@index([shopId])
+  @@map("categories")
+}
+
+// ─── Menu Items ───────────────────────────────────────────────────────────────
+
+model MenuItem {
+  id          String    @id @default(uuid())
+  shopId      String
+  shop        Shop      @relation(fields: [shopId], references: [id])
+  categoryId  String?
+  category    Category? @relation(fields: [categoryId], references: [id])
+  name        String
+  description String?
+  price       Decimal   @db.Decimal(10, 2)
+  imageUrl    String?
+  isAvailable Boolean   @default(true)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  orderItems OrderItem[]
+
+  @@index([shopId])
+  @@index([categoryId])
+  @@map("menu_items")
+}
+
+// ─── Orders ───────────────────────────────────────────────────────────────────
+
+model Order {
+  id              String      @id @default(uuid())
+  shopId          String
+  shop            Shop        @relation(fields: [shopId], references: [id])
+  customerId      String
+  customer        User        @relation(fields: [customerId], references: [id])
+  status          OrderStatus @default(PENDING_PAYMENT)
+  totalAmount     Decimal     @db.Decimal(10, 2)
+  tokenAmount     Decimal     @db.Decimal(10, 2)
+  remainingAmount Decimal     @db.Decimal(10, 2)
+  paidAmount      Decimal     @default(0) @db.Decimal(10, 2)
+  notes           String?
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+
+  orderItems OrderItem[]
+  queueEntry QueueEntry?
+  payments   Payment[]
+  refunds    Refund[]
+
+  @@index([shopId])
+  @@index([customerId])
+  @@index([status])
+  @@index([createdAt])
+  @@map("orders")
+}
+
+// ─── Order Items ──────────────────────────────────────────────────────────────
+
+model OrderItem {
+  id         String   @id @default(uuid())
+  orderId    String
+  order      Order    @relation(fields: [orderId], references: [id])
+  menuItemId String
+  menuItem   MenuItem @relation(fields: [menuItemId], references: [id])
+  name       String
+  price      Decimal  @db.Decimal(10, 2)
+  quantity   Int
+  subtotal   Decimal  @db.Decimal(10, 2)
+  createdAt  DateTime @default(now())
+
+  @@index([orderId])
+  @@map("order_items")
+}
+
+// ─── Queue Entries ────────────────────────────────────────────────────────────
+
+model QueueEntry {
+  id           String    @id @default(uuid())
+  shopId       String
+  shop         Shop      @relation(fields: [shopId], references: [id])
+  orderId      String    @unique
+  order        Order     @relation(fields: [orderId], references: [id])
+  tokenNumber  Int
+  tokenDisplay String
+  position     Int
+  joinedAt     DateTime  @default(now())
+  acceptedAt   DateTime?
+  preparingAt  DateTime?
+  readyAt      DateTime?
+  completedAt  DateTime?
+
+  @@index([shopId, tokenNumber])
+  @@index([shopId, position])
+  @@map("queue_entries")
+}
+
+// ─── Payments ─────────────────────────────────────────────────────────────────
+
+model Payment {
+  id                String        @id @default(uuid())
+  orderId           String
+  order             Order         @relation(fields: [orderId], references: [id])
+  razorpayOrderId   String        @unique
+  razorpayPaymentId String?       @unique
+  type              PaymentType
+  amount            Decimal       @db.Decimal(10, 2)
+  status            PaymentStatus @default(PENDING)
+  webhookPayload    Json?
+  capturedAt        DateTime?
+  failedAt          DateTime?
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+
+  refunds Refund[]
+
+  @@index([orderId])
+  @@index([razorpayOrderId])
+  @@index([status])
+  @@map("payments")
+}
+
+// ─── Refunds ──────────────────────────────────────────────────────────────────
+
+model Refund {
+  id               String       @id @default(uuid())
+  orderId          String
+  order            Order        @relation(fields: [orderId], references: [id])
+  paymentId        String
+  payment          Payment      @relation(fields: [paymentId], references: [id])
+  razorpayRefundId String?      @unique
+  amount           Decimal      @db.Decimal(10, 2)
+  reason           String?
+  status           RefundStatus @default(INITIATED)
+  initiatedAt      DateTime     @default(now())
+  processedAt      DateTime?
+
+  @@index([orderId])
+  @@index([paymentId])
+  @@map("refunds")
+}
+
+// ─── Notifications ────────────────────────────────────────────────────────────
+
+model Notification {
+  id        String            @id @default(uuid())
+  userId    String
+  user      User              @relation(fields: [userId], references: [id])
+  orderId   String?
+  event     NotificationEvent
+  title     String
+  body      String
+  sent      Boolean           @default(false)
+  sentAt    DateTime?
+  createdAt DateTime          @default(now())
+
+  @@index([userId])
+  @@index([orderId])
+  @@map("notifications")
+}
+
+// ─── Audit Logs ───────────────────────────────────────────────────────────────
+
+model AuditLog {
+  id        String   @id @default(uuid())
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id])
+  action    String
+  entity    String
+  entityId  String
+  before    Json?
+  after     Json?
+  ipAddress String?
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([entity, entityId])
+  @@index([createdAt])
+  @@map("audit_logs")
 }
