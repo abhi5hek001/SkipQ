@@ -43,11 +43,11 @@ export class PaymentsService {
       where: { orderId, type: PaymentType.TOKEN, status: PaymentStatus.PENDING },
     });
     if (existing) {
-      // Return the existing pending payment so frontend can resume checkout
       return this.buildPaymentResponse(existing);
     }
 
-    const amountPaise = Math.round(Number(order.tokenAmount) * 100);
+    // Charge full amount: food cost + Rs. 5 platform fee
+    const amountPaise = Math.round(Number(order.totalAmount) * 100);
     const rzpOrder = await this.razorpay.orders.create({
       amount: amountPaise,
       currency: 'INR',
@@ -255,6 +255,9 @@ export class PaymentsService {
         }),
       ]);
 
+      // Transfer food amount (total - platform fee) to vendor via Razorpay Route
+      await this.transferToVendor(entity.id, order.shopId, order.id, order.totalAmount, order.tokenAmount);
+
       this.events.emitOrderStatusChanged(order.id, { status: OrderStatus.QUEUED });
       this.events.emitQueueNewOrder(order.shopId, { orderId: order.id, tokenDisplay, totalAmount: order.totalAmount });
 
@@ -262,7 +265,7 @@ export class PaymentsService {
       this.notifications.notifyQueueJoined(order.customerId, order.id, tokenDisplay, position, 0).catch(() => {});
       this.notifications.notifyPaymentSuccess(order.customerId, order.id, String(payment.amount)).catch(() => {});
     } else {
-      // REMAINING payment: mark complete
+      // REMAINING payment path kept for backward compatibility — not used in new flow (remainingAmount = 0)
       await this.prisma.$transaction([
         this.prisma.payment.update({
           where: { id: payment.id },
@@ -353,6 +356,45 @@ export class PaymentsService {
     ]);
 
     this.notifications.notifyRefundProcessed(refund.order.customerId, refund.orderId, String(refund.amount)).catch(() => {});
+  }
+
+  private async transferToVendor(
+    razorpayPaymentId: string,
+    shopId: string,
+    orderId: string,
+    totalAmount: unknown,
+    platformFee: unknown,
+  ) {
+    try {
+      const shop = await this.prisma.shop.findUnique({
+        where: { id: shopId },
+        include: { vendor: { select: { razorpayAccountId: true } } },
+      });
+
+      if (!shop?.vendor?.razorpayAccountId) {
+        this.logger.warn(`Vendor for shop ${shopId} has no Razorpay account — skipping Route transfer for order ${orderId}`);
+        return;
+      }
+
+      const foodAmountPaise = Math.round((Number(totalAmount) - Number(platformFee)) * 100);
+      if (foodAmountPaise <= 0) return;
+
+      await (this.razorpay.payments as any).transfer(razorpayPaymentId, {
+        transfers: [
+          {
+            account: shop.vendor.razorpayAccountId,
+            amount: foodAmountPaise,
+            currency: 'INR',
+            notes: { orderId },
+            on_hold: 0,
+          },
+        ],
+      });
+
+      this.logger.log(`Transferred ${foodAmountPaise} paise to vendor ${shop.vendor.razorpayAccountId} for order ${orderId}`);
+    } catch (err) {
+      this.logger.error(`Razorpay Route transfer failed for order ${orderId}: ${(err as Error).message}`);
+    }
   }
 
   private async nextTokenNumber(shopId: string): Promise<{ nextToken: number; tokenDisplay: string }> {

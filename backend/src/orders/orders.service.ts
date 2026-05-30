@@ -54,9 +54,14 @@ export class OrdersService {
       };
     });
 
-    const totalAmount = orderItemsData.reduce((sum, i) => sum + i.subtotal, 0);
-    const tokenAmount = Number(shop.tokenAmount);
-    const remainingAmount = totalAmount - tokenAmount;
+    const PLATFORM_FEE = 5;
+    const itemsTotal = orderItemsData.reduce((sum, i) => sum + i.subtotal, 0);
+    // totalAmount = what the customer is charged (food + platform fee)
+    // tokenAmount = platform fee portion that stays with SkipQ
+    // remainingAmount = 0: full payment is collected upfront; vendor receives food portion via Razorpay Route
+    const totalAmount = itemsTotal + PLATFORM_FEE;
+    const tokenAmount = PLATFORM_FEE;
+    const remainingAmount = 0;
 
     return this.prisma.order.create({
       data: {
@@ -64,7 +69,7 @@ export class OrdersService {
         customerId,
         totalAmount,
         tokenAmount,
-        remainingAmount: Math.max(remainingAmount, 0),
+        remainingAmount,
         notes: dto.notes,
         orderItems: { create: orderItemsData },
       },

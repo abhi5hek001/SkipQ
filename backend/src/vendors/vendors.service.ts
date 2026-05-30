@@ -25,9 +25,18 @@ export class VendorsService {
   async getMyProfile(userId: string) {
     const vendor = await this.prisma.vendor.findUnique({
       where: { userId },
-      include: { shops: { select: { id: true, name: true, isOpen: true } } },
+      include: { shops: { select: { id: true, name: true, isOpen: true, tokenAmount: true, avgPrepTimeMins: true } } },
     });
     if (!vendor) throw new NotFoundException('Vendor profile not found');
     return vendor;
+  }
+
+  async updateSettings(userId: string, dto: { razorpayAccountId?: string }) {
+    const vendor = await this.prisma.vendor.findUnique({ where: { userId } });
+    if (!vendor) throw new NotFoundException('Vendor profile not found');
+    return this.prisma.vendor.update({
+      where: { userId },
+      data: { razorpayAccountId: dto.razorpayAccountId },
+    });
   }
 }

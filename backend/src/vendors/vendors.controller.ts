@@ -1,4 +1,4 @@
-import { Controller, Post, Get, Body, UseGuards } from '@nestjs/common';
+import { Controller, Post, Get, Patch, Body, UseGuards } from '@nestjs/common';
 import { VendorsService } from './vendors.service';
 import { CreateVendorDto } from './dto/create-vendor.dto';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
@@ -17,5 +17,10 @@ export class VendorsController {
   @Get('me')
   getMyProfile(@CurrentUser() user: any) {
     return this.vendorsService.getMyProfile(user.id);
+  }
+
+  @Patch('settings')
+  updateSettings(@CurrentUser() user: any, @Body() body: { razorpayAccountId?: string }) {
+    return this.vendorsService.updateSettings(user.id, body);
   }
 }

@@ -77,13 +77,14 @@ model User {
 // ─── Vendors ──────────────────────────────────────────────────────────────────
 
 model Vendor {
-  id           String   @id @default(uuid())
-  userId       String   @unique
-  businessName String
-  email        String   @unique
-  phone        String
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  id                String   @id @default(uuid())
+  userId            String   @unique
+  businessName      String
+  email             String   @unique
+  phone             String
+  razorpayAccountId String?  @map("razorpay_account_id")
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
 
   shops Shop[]
 
