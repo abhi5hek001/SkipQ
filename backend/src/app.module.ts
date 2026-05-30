@@ -6,6 +6,8 @@ import { VendorsModule } from './vendors/vendors.module';
 import { ShopsModule } from './shops/shops.module';
 import { CategoriesModule } from './categories/categories.module';
 import { MenuModule } from './menu/menu.module';
+import { OrdersModule } from './orders/orders.module';
+import { QueueModule } from './queue/queue.module';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 
@@ -18,7 +20,9 @@ import { AppService } from './app.service';
     ShopsModule,
     CategoriesModule,
     MenuModule,
-    // Coming next: OrdersModule, QueueModule, PaymentsModule, NotificationsModule
+    OrdersModule,
+    QueueModule,
+    // Coming next: PaymentsModule, NotificationsModule
   ],
   controllers: [AppController],
   providers: [AppService],
