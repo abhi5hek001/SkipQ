@@ -8,17 +8,19 @@ interface AuthContextType {
   login: (token: string) => void;
   logout: () => void;
   isLoggedIn: boolean;
+  hydrated: boolean;
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [token, setToken] = useState<string | null>(null);
+  const [hydrated, setHydrated] = useState(false);
 
   useEffect(() => {
     const stored = localStorage.getItem('token');
-    if (!stored) return;
-    setToken(stored);
+    if (stored) setToken(stored);
+    setHydrated(true); // always mark ready, even when no token
     // Re-register FCM token on page reload in case it rotated
     requestFcmToken().then((fcmToken) => {
       if (!fcmToken) return;
@@ -45,8 +47,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setToken(null);
   };
 
+  // Don't render children until localStorage has been read.
+  // Without this, pages fire their useEffect before this one and see
+  // isLoggedIn=false (initial state), triggering a spurious /login redirect.
+  if (!hydrated) return null;
+
   return (
-    <AuthContext.Provider value={{ token, login, logout, isLoggedIn: !!token }}>
+    <AuthContext.Provider value={{ token, login, logout, isLoggedIn: !!token, hydrated }}>
       {children}
     </AuthContext.Provider>
   );
