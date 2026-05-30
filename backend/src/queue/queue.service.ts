@@ -6,6 +6,7 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { EventsService } from '../events/events.service';
+import { NotificationsService } from '../notifications/notifications.service';
 import { OrderStatus } from '@prisma/client';
 
 // Valid vendor-driven transitions
@@ -29,6 +30,7 @@ export class QueueService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly events: EventsService,
+    private readonly notifications: NotificationsService,
   ) {}
 
   async getVendorQueue(userId: string, shopId: string) {
@@ -97,6 +99,17 @@ export class QueueService {
 
     this.events.emitOrderStatusChanged(orderId, { status: nextStatus });
     this.events.emitQueueOrderUpdated(order.shop.vendor.userId, { orderId, status: nextStatus });
+
+    const customerId = order.customerId;
+    if (nextStatus === OrderStatus.ACCEPTED) {
+      this.notifications.notifyOrderAccepted(customerId, orderId).catch(() => {});
+    } else if (nextStatus === OrderStatus.PREPARING) {
+      this.notifications.notifyPreparationStarted(customerId, orderId).catch(() => {});
+    } else if (nextStatus === OrderStatus.READY) {
+      this.notifications.notifyReadyForPickup(customerId, orderId).catch(() => {});
+    } else if (nextStatus === OrderStatus.COMPLETED) {
+      this.notifications.notifyOrderCompleted(customerId, orderId).catch(() => {});
+    }
 
     return updatedOrder;
   }

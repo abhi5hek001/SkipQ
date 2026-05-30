@@ -11,6 +11,7 @@ import Razorpay from 'razorpay';
 import { PrismaService } from '../prisma/prisma.service';
 import { OrdersService } from '../orders/orders.service';
 import { EventsService } from '../events/events.service';
+import { NotificationsService } from '../notifications/notifications.service';
 import { OrderStatus, PaymentStatus, PaymentType, RefundStatus } from '@prisma/client';
 
 @Injectable()
@@ -22,6 +23,7 @@ export class PaymentsService {
     private readonly prisma: PrismaService,
     private readonly ordersService: OrdersService,
     private readonly events: EventsService,
+    private readonly notifications: NotificationsService,
   ) {
     this.razorpay = new Razorpay({
       key_id: process.env.RAZORPAY_KEY_ID ?? '',
@@ -255,6 +257,10 @@ export class PaymentsService {
 
       this.events.emitOrderStatusChanged(order.id, { status: OrderStatus.QUEUED });
       this.events.emitQueueNewOrder(order.shopId, { orderId: order.id, tokenDisplay, totalAmount: order.totalAmount });
+
+      const position = await this.ordersService.computePosition(order.shopId, new Date());
+      this.notifications.notifyQueueJoined(order.customerId, order.id, tokenDisplay, position, 0).catch(() => {});
+      this.notifications.notifyPaymentSuccess(order.customerId, order.id, String(payment.amount)).catch(() => {});
     } else {
       // REMAINING payment: mark complete
       await this.prisma.$transaction([
@@ -285,6 +291,8 @@ export class PaymentsService {
       ]);
 
       this.events.emitOrderStatusChanged(order.id, { status: OrderStatus.COMPLETED });
+      this.notifications.notifyPaymentSuccess(order.customerId, order.id, String(payment.amount)).catch(() => {});
+      this.notifications.notifyOrderCompleted(order.customerId, order.id).catch(() => {});
     }
   }
 
@@ -317,6 +325,7 @@ export class PaymentsService {
   private async onRefundProcessed(entity: { id: string; payment_id: string }) {
     const refund = await this.prisma.refund.findUnique({
       where: { razorpayRefundId: entity.id },
+      include: { order: { select: { customerId: true } } },
     });
     if (!refund || refund.status === RefundStatus.PROCESSED) return;
 
@@ -342,6 +351,8 @@ export class PaymentsService {
         },
       }),
     ]);
+
+    this.notifications.notifyRefundProcessed(refund.order.customerId, refund.orderId, String(refund.amount)).catch(() => {});
   }
 
   private async nextTokenNumber(shopId: string): Promise<{ nextToken: number; tokenDisplay: string }> {

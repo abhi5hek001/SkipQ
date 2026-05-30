@@ -10,6 +10,8 @@ import { OrdersModule } from './orders/orders.module';
 import { QueueModule } from './queue/queue.module';
 import { PaymentsModule } from './payments/payments.module';
 import { EventsModule } from './events/events.module';
+import { NotificationsModule } from './notifications/notifications.module';
+import { UsersModule } from './users/users.module';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 
@@ -26,7 +28,8 @@ import { AppService } from './app.service';
     QueueModule,
     PaymentsModule,
     EventsModule,
-    // Coming next: NotificationsModule
+    NotificationsModule,
+    UsersModule,
   ],
   controllers: [AppController],
   providers: [AppService],
