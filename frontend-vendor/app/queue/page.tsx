@@ -53,7 +53,7 @@ function QueuePageInner() {
     if (!shopId) { router.replace('/dashboard'); return; }
     fetchQueue();
 
-    const socket: Socket = io(process.env.NEXT_PUBLIC_WS_URL!, { auth: { token } });
+    const socket: Socket = io(`${process.env.NEXT_PUBLIC_WS_URL}/ws`, { path: '/socket.io', auth: { token } });
     socket.on('connect', () => socket.emit('join_shop', { shopId }));
     socket.on('queue.new_order', fetchQueue);
     socket.on('queue.order_updated', fetchQueue);

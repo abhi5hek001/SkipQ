@@ -70,7 +70,8 @@ export default function OrderStatusPage() {
 
     api.get(`/orders/${orderId}`).then(({ data }) => setOrder(data)).finally(() => setLoading(false));
 
-    const socket: Socket = io(process.env.NEXT_PUBLIC_WS_URL!, {
+    // Connect to the /ws namespace (gateway is mounted there)
+    const socket: Socket = io(`${process.env.NEXT_PUBLIC_WS_URL}/ws`, {
       path: '/socket.io',
       auth: { token },
     });
@@ -87,6 +88,23 @@ export default function OrderStatusPage() {
 
     return () => { socket.disconnect(); };
   }, [orderId, router]);
+
+  // Polling fallback: while awaiting webhook (Razorpay can't reach localhost in dev),
+  // re-fetch the order every 3s until status moves off PENDING_PAYMENT.
+  useEffect(() => {
+    if (!awaitingWebhook) return;
+    const interval = setInterval(async () => {
+      try {
+        const { data } = await api.get(`/orders/${orderId}`);
+        if (data.status !== 'PENDING_PAYMENT') {
+          setAwaitingWebhook(false);
+          setOrder(data);
+          clearInterval(interval);
+        }
+      } catch { /* ignore */ }
+    }, 3000);
+    return () => clearInterval(interval);
+  }, [awaitingWebhook, orderId]);
 
   async function openRazorpayCheckout(type: 'token' | 'remaining') {
     setError('');
