@@ -92,7 +92,7 @@ function MenuPageInner() {
             </div>
             <div className="col-span-2">
               <label className="block text-xs font-medium mb-1" style={{ color: 'var(--sq-ink2)' }}>Image URL (optional)</label>
-              <input type="url" value={form.imageUrl}
+              <input type="text" value={form.imageUrl}
                 onChange={(e) => setForm((p) => ({ ...p, imageUrl: e.target.value }))}
                 placeholder="https://..."
                 className="w-full rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 bg-white"
