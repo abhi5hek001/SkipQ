@@ -42,6 +42,19 @@ function loadRazorpayScript(): Promise<boolean> {
   });
 }
 
+function statusBannerStyle(status: string): { background: string; color: string } {
+  switch (status) {
+    case 'READY':       return { background: '#F0FDF4', color: '#16A34A' };
+    case 'CANCELLED':   return { background: '#FEF2F2', color: '#DC2626' };
+    case 'REFUNDED':    return { background: '#FEF2F2', color: '#DC2626' };
+    case 'COMPLETED':   return { background: 'var(--sq-fill)', color: 'var(--sq-ink2)' };
+    case 'PENDING_PAYMENT': return { background: '#FFFBEB', color: '#D97706' };
+    case 'ACCEPTED':
+    case 'PREPARING':   return { background: '#EEF2FF', color: '#4F46E5' };
+    default:            return { background: '#EFF6FF', color: '#2563EB' }; // QUEUED
+  }
+}
+
 export default function OrderStatusPage() {
   const { orderId } = useParams<{ orderId: string }>();
   const router = useRouter();
@@ -91,15 +104,13 @@ export default function OrderStatusPage() {
 
       const options = {
         key: payment.keyId,
-        amount: Math.round(Number(payment.amount) * 100), // rupees → paise
+        amount: Math.round(Number(payment.amount) * 100),
         currency: payment.currency ?? 'INR',
         order_id: payment.razorpayOrderId,
         name: 'SkipQ',
         description: type === 'token' ? 'Queue token payment' : 'Order balance payment',
         theme: { color: '#f97316' },
         handler: () => {
-          // Frontend handler fires on success in modal.
-          // Do NOT trust this to confirm payment — wait for webhook via WebSocket.
           setAwaitingWebhook(true);
         },
         modal: {
@@ -129,132 +140,164 @@ export default function OrderStatusPage() {
     }
   }
 
-  if (loading) return <div className="flex items-center justify-center h-screen text-gray-400">Loading...</div>;
-  if (!order) return <div className="flex items-center justify-center h-screen text-gray-400">Order not found.</div>;
+  if (loading) return (
+    <div className="flex items-center justify-center h-screen text-sm" style={{ color: 'var(--sq-muted)' }}>
+      Loading...
+    </div>
+  );
+  if (!order) return (
+    <div className="flex items-center justify-center h-screen text-sm" style={{ color: 'var(--sq-muted)' }}>
+      Order not found.
+    </div>
+  );
 
   const stepIndex = STATUS_STEPS.indexOf(order.status);
+  const banner = statusBannerStyle(order.status);
 
   return (
-    <div className="max-w-lg mx-auto min-h-screen bg-white">
-      <div className="sticky top-0 bg-white border-b px-4 py-4 flex items-center gap-3">
-        <button onClick={() => router.push('/orders')} className="text-gray-500">←</button>
+    <div className="max-w-lg mx-auto min-h-screen" style={{ background: 'var(--sq-paper)' }}>
+      {/* Sticky header */}
+      <div
+        className="sticky top-0 z-10 px-4 py-4 flex items-center gap-3"
+        style={{ background: 'var(--sq-white)', borderBottom: '1px solid var(--sq-line)' }}
+      >
+        <button
+          onClick={() => router.push('/orders')}
+          className="text-lg"
+          style={{ color: 'var(--sq-ink2)' }}
+        >
+          ←
+        </button>
         <div>
-          <h1 className="text-base font-bold">{order.shop?.name}</h1>
-          {order.queueEntry && <p className="text-xs text-gray-500">Token: {order.queueEntry.tokenDisplay}</p>}
+          <h1 className="text-base font-bold" style={{ color: 'var(--sq-ink)' }}>{order.shop?.name}</h1>
+          {order.queueEntry && (
+            <p className="text-xs" style={{ color: 'var(--sq-muted)' }}>Token: {order.queueEntry.tokenDisplay}</p>
+          )}
         </div>
       </div>
 
-      {/* Status Banner */}
-      <div className={`px-4 py-6 text-center ${
-        order.status === 'READY' ? 'bg-green-50' :
-        order.status === 'CANCELLED' ? 'bg-red-50' : 'bg-orange-50'
-      }`}>
-        <p className="text-3xl font-bold mb-1">
-          {order.status === 'READY' ? 'Ready!' :
-           order.status === 'QUEUED' && order.queuePosition !== null ? `#${order.queuePosition + 1}` : ''}
-        </p>
-        <p className={`font-semibold text-lg ${
-          order.status === 'READY' ? 'text-green-700' :
-          order.status === 'CANCELLED' ? 'text-red-700' : 'text-orange-700'
-        }`}>
+      {/* Status banner */}
+      <div className="px-4 py-6 text-center" style={{ background: banner.background }}>
+        {order.status === 'READY' && (
+          <p className="text-2xl font-bold mb-1" style={{ color: banner.color }}>READY FOR PICKUP</p>
+        )}
+        {order.status === 'QUEUED' && order.queuePosition !== null && (
+          <p className="text-5xl font-bold font-mono mb-2" style={{ color: 'var(--sq-ink)' }}>
+            #{order.queuePosition + 1}
+          </p>
+        )}
+        <p className="font-semibold text-base" style={{ color: banner.color }}>
           {STATUS_LABELS[order.status] ?? order.status}
         </p>
+        {order.status === 'QUEUED' && order.queuePosition !== null && (
+          <p className="text-sm mt-1" style={{ color: 'var(--sq-muted)' }}>
+            Position #{order.queuePosition + 1}
+          </p>
+        )}
         {order.estimatedWaitMins !== null && order.status === 'QUEUED' && (
-          <p className="text-sm text-gray-500 mt-1">Est. wait: ~{order.estimatedWaitMins} min</p>
+          <p className="text-sm mt-0.5" style={{ color: 'var(--sq-muted)' }}>
+            Est. wait: ~{order.estimatedWaitMins} min
+          </p>
+        )}
+        {order.status === 'READY' && order.queueEntry && (
+          <p className="text-3xl font-bold font-mono mt-3" style={{ color: 'var(--sq-ink)' }}>
+            {order.queueEntry.tokenDisplay}
+          </p>
         )}
       </div>
 
       {/* Awaiting webhook confirmation */}
       {awaitingWebhook && (
-        <div className="mx-4 mt-4 bg-blue-50 border border-blue-200 rounded-xl px-4 py-3 text-sm text-blue-700 text-center">
+        <div className="mx-4 mt-4 rounded-xl px-4 py-3 text-sm text-center" style={{ background: '#EFF6FF', border: '1px solid #BFDBFE', color: '#2563EB' }}>
           Payment received — confirming with bank...
         </div>
       )}
 
-      {/* Progress Steps */}
+      {/* Progress timeline */}
       {stepIndex >= 0 && (
-        <div className="px-4 py-6">
-          <div className="flex items-center">
-            {STATUS_STEPS.map((step, i) => (
-              <div key={step} className="flex items-center flex-1 last:flex-none">
-                <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${
-                  i <= stepIndex ? 'bg-orange-500 text-white' : 'bg-gray-200 text-gray-400'
-                }`}>
-                  {i < stepIndex ? '✓' : i + 1}
+        <div className="mx-4 mt-4 rounded-xl p-4" style={{ background: 'var(--sq-white)', border: '1px solid var(--sq-line)' }}>
+          <p className="text-xs font-semibold mb-3" style={{ color: 'var(--sq-ink2)' }}>Order Progress</p>
+          <div className="space-y-3">
+            {STATUS_STEPS.map((step, i) => {
+              const done = i < stepIndex;
+              const current = i === stepIndex;
+              return (
+                <div key={step} className="flex items-center gap-3">
+                  <div
+                    className="w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold shrink-0"
+                    style={{
+                      background: done || current ? 'var(--sq-accent)' : 'var(--sq-fill)',
+                      color: done || current ? 'var(--sq-white)' : 'var(--sq-muted)',
+                      border: current ? '2px solid var(--sq-accent)' : 'none',
+                    }}
+                  >
+                    {done ? '✓' : i + 1}
+                  </div>
+                  <span
+                    className="text-sm"
+                    style={{ color: done || current ? 'var(--sq-ink)' : 'var(--sq-muted)', fontWeight: current ? 600 : 400 }}
+                  >
+                    {STATUS_LABELS[step]}
+                  </span>
                 </div>
-                {i < STATUS_STEPS.length - 1 && (
-                  <div className={`h-0.5 flex-1 mx-1 ${i < stepIndex ? 'bg-orange-500' : 'bg-gray-200'}`} />
-                )}
-              </div>
-            ))}
-          </div>
-          <div className="flex justify-between mt-2 text-xs text-gray-400">
-            {STATUS_STEPS.map((s) => (
-              <span key={s} className="text-center" style={{ width: `${100 / STATUS_STEPS.length}%` }}>
-                {STATUS_LABELS[s].split(' ')[0]}
-              </span>
-            ))}
+              );
+            })}
           </div>
         </div>
       )}
 
-      {/* Order Items */}
-      <div className="px-4 pb-4 border-t">
-        <h2 className="text-sm font-semibold text-gray-600 mt-4 mb-2">Your items</h2>
-        <div className="space-y-1">
+      {/* Order items */}
+      <div className="mx-4 mt-4 rounded-xl p-4" style={{ background: 'var(--sq-white)', border: '1px solid var(--sq-line)' }}>
+        <p className="text-xs font-semibold mb-3" style={{ color: 'var(--sq-ink2)' }}>Your items</p>
+        <div className="space-y-2">
           {order.orderItems.map((item, i) => (
             <div key={i} className="flex justify-between text-sm">
-              <span>{item.name} × {item.quantity}</span>
-              <span>Rs. {(Number(item.price) * item.quantity).toFixed(2)}</span>
+              <span style={{ color: 'var(--sq-ink)' }}>{item.name} × {item.quantity}</span>
+              <span style={{ color: 'var(--sq-ink)' }}>Rs. {(Number(item.price) * item.quantity).toFixed(2)}</span>
             </div>
           ))}
         </div>
-        <div className="mt-3 pt-2 border-t space-y-1 text-sm">
-          <div className="flex justify-between text-gray-500">
-            <span>Token paid</span>
-            <span>Rs. {Number(order.paidAmount).toFixed(2)}</span>
+
+        <div className="mt-3 pt-3 space-y-1.5" style={{ borderTop: '1px solid var(--sq-line)' }}>
+          <div className="flex justify-between text-sm">
+            <span style={{ color: 'var(--sq-ink2)' }}>Food total</span>
+            <span style={{ color: 'var(--sq-ink2)' }}>Rs. {(Number(order.totalAmount) - Number(order.tokenAmount)).toFixed(2)}</span>
           </div>
-          {Number(order.remainingAmount) > 0 && (
-            <div className="flex justify-between font-semibold">
-              <span>Balance at pickup</span>
-              <span>Rs. {Number(order.remainingAmount).toFixed(2)}</span>
-            </div>
-          )}
-          <div className="flex justify-between font-bold pt-1 border-t">
-            <span>Total</span>
-            <span>Rs. {Number(order.totalAmount).toFixed(2)}</span>
+          <div className="flex justify-between text-sm">
+            <span style={{ color: 'var(--sq-ink2)' }}>Platform fee</span>
+            <span style={{ color: 'var(--sq-ink2)' }}>Rs. {Number(order.tokenAmount).toFixed(2)}</span>
+          </div>
+          <div className="flex justify-between text-sm font-bold pt-1.5" style={{ borderTop: '1px solid var(--sq-line)' }}>
+            <span style={{ color: 'var(--sq-ink)' }}>Total paid</span>
+            <span style={{ color: 'var(--sq-ink)' }}>Rs. {Number(order.totalAmount).toFixed(2)}</span>
           </div>
         </div>
       </div>
 
       {/* Actions */}
-      <div className="px-4 py-4 space-y-2">
-        {error && <p className="text-red-500 text-sm">{error}</p>}
+      <div className="px-4 py-4 space-y-3 pb-8">
+        {error && <p className="text-sm" style={{ color: '#DC2626' }}>{error}</p>}
 
         {order.status === 'PENDING_PAYMENT' && (
           <button
             onClick={() => openRazorpayCheckout('token')}
             disabled={paying || awaitingWebhook}
-            className="w-full bg-orange-500 hover:bg-orange-600 text-white font-semibold py-3 rounded-xl disabled:opacity-50 transition"
+            className="w-full py-4 rounded-xl font-semibold text-sm transition"
+            style={{
+              background: 'var(--sq-accent)',
+              color: 'var(--sq-white)',
+              opacity: paying || awaitingWebhook ? 0.4 : 1,
+            }}
           >
-            {paying ? 'Opening payment...' : `Pay Rs. ${Number(order.tokenAmount).toFixed(2)} to Join Queue`}
-          </button>
-        )}
-
-        {order.status === 'READY' && Number(order.remainingAmount) > 0 && (
-          <button
-            onClick={() => openRazorpayCheckout('remaining')}
-            disabled={paying || awaitingWebhook}
-            className="w-full bg-green-600 hover:bg-green-700 text-white font-semibold py-3 rounded-xl disabled:opacity-50 transition"
-          >
-            {paying ? 'Opening payment...' : `Pay Balance Rs. ${Number(order.remainingAmount).toFixed(2)}`}
+            {paying ? 'Opening payment...' : `Pay Rs. ${Number(order.totalAmount).toFixed(2)} & Join Queue`}
           </button>
         )}
 
         {['PENDING_PAYMENT', 'QUEUED', 'ACCEPTED'].includes(order.status) && (
           <button
             onClick={cancelOrder}
-            className="w-full border border-red-300 text-red-500 font-medium py-2 rounded-xl hover:bg-red-50 text-sm transition"
+            className="w-full py-2.5 rounded-xl text-sm font-medium transition"
+            style={{ border: '1px solid #FCA5A5', color: '#DC2626' }}
           >
             Cancel Order
           </button>

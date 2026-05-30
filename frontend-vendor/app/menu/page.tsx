@@ -50,57 +50,89 @@ function MenuPageInner() {
   }
 
   return (
-    <div className="max-w-2xl mx-auto min-h-screen bg-white">
-      <div className="sticky top-0 bg-white border-b px-4 py-4 flex items-center gap-3">
-        <button onClick={() => router.push('/dashboard')} className="text-gray-500">←</button>
-        <h1 className="text-base font-bold flex-1">Menu</h1>
-        <button onClick={() => setShowForm((v) => !v)} className="text-sm font-medium bg-gray-900 text-white px-3 py-1.5 rounded-lg">
+    <div className="max-w-2xl mx-auto min-h-screen" style={{ background: 'var(--sq-paper)' }}>
+      {/* Top bar */}
+      <div className="sticky top-0 bg-white px-4 py-4 flex items-center gap-3" style={{ borderBottom: '1px solid var(--sq-line)' }}>
+        <button onClick={() => router.push('/dashboard')} className="text-sm" style={{ color: 'var(--sq-muted)' }}>← Back</button>
+        <h1 className="text-base font-bold flex-1" style={{ color: 'var(--sq-ink)' }}>Menu</h1>
+        <button onClick={() => setShowForm((v) => !v)}
+          className="text-sm font-semibold text-white px-3 py-1.5 rounded-xl transition hover:opacity-80"
+          style={{ background: 'var(--sq-ink)' }}>
           {showForm ? 'Cancel' : '+ Add Item'}
         </button>
       </div>
 
+      {/* Add item form */}
       {showForm && (
-        <form onSubmit={addItem} className="px-4 py-4 border-b bg-gray-50 space-y-3">
-          {[
-            { label: 'Item name', key: 'name', type: 'text', placeholder: 'e.g. Masala Chai' },
-            { label: 'Price (Rs.)', key: 'price', type: 'number', placeholder: '0.00' },
-            { label: 'Description (optional)', key: 'description', type: 'text', placeholder: '' },
-            { label: 'Image URL (optional)', key: 'imageUrl', type: 'url', placeholder: 'https://...' },
-          ].map(({ label, key, type, placeholder }) => (
-            <div key={key}>
-              <label className="block text-xs font-medium text-gray-600 mb-1">{label}</label>
-              <input type={type} value={form[key as keyof typeof form]}
-                onChange={(e) => setForm((p) => ({ ...p, [key]: e.target.value }))}
-                placeholder={placeholder} required={key === 'name' || key === 'price'}
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-800" />
+        <form onSubmit={addItem} className="px-4 py-4 space-y-3" style={{ borderBottom: '1px solid var(--sq-line)', background: 'var(--sq-fill)' }}>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="col-span-2">
+              <label className="block text-xs font-medium mb-1" style={{ color: 'var(--sq-ink2)' }}>Item name</label>
+              <input type="text" value={form.name}
+                onChange={(e) => setForm((p) => ({ ...p, name: e.target.value }))}
+                placeholder="e.g. Masala Chai" required
+                className="w-full rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 bg-white"
+                style={{ border: '1px solid var(--sq-line)' }} />
             </div>
-          ))}
+            <div>
+              <label className="block text-xs font-medium mb-1" style={{ color: 'var(--sq-ink2)' }}>Price (Rs.)</label>
+              <input type="number" value={form.price}
+                onChange={(e) => setForm((p) => ({ ...p, price: e.target.value }))}
+                placeholder="0.00" required
+                className="w-full rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 bg-white"
+                style={{ border: '1px solid var(--sq-line)' }} />
+            </div>
+            <div>
+              <label className="block text-xs font-medium mb-1" style={{ color: 'var(--sq-ink2)' }}>Description (optional)</label>
+              <input type="text" value={form.description}
+                onChange={(e) => setForm((p) => ({ ...p, description: e.target.value }))}
+                placeholder=""
+                className="w-full rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 bg-white"
+                style={{ border: '1px solid var(--sq-line)' }} />
+            </div>
+            <div className="col-span-2">
+              <label className="block text-xs font-medium mb-1" style={{ color: 'var(--sq-ink2)' }}>Image URL (optional)</label>
+              <input type="url" value={form.imageUrl}
+                onChange={(e) => setForm((p) => ({ ...p, imageUrl: e.target.value }))}
+                placeholder="https://..."
+                className="w-full rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 bg-white"
+                style={{ border: '1px solid var(--sq-line)' }} />
+            </div>
+          </div>
           {error && <p className="text-red-500 text-sm">{error}</p>}
-          <button type="submit" disabled={adding} className="w-full bg-gray-900 text-white font-medium py-2 rounded-lg text-sm disabled:opacity-50">
+          <button type="submit" disabled={adding}
+            className="text-white font-semibold py-2 px-5 rounded-xl text-sm disabled:opacity-50 transition hover:opacity-80"
+            style={{ background: 'var(--sq-ink)' }}>
             {adding ? 'Adding...' : 'Add Item'}
           </button>
         </form>
       )}
 
-      {loading && <p className="text-center text-gray-400 py-12">Loading menu...</p>}
+      {loading && <p className="text-center py-12 text-sm" style={{ color: 'var(--sq-muted)' }}>Loading menu...</p>}
 
-      <div className="divide-y">
+      {/* Item list */}
+      <div className="bg-white mt-3 rounded-xl overflow-hidden" style={{ border: '1px solid var(--sq-line)' }}>
         {items.map((item) => (
-          <div key={item.id} className="flex items-center gap-3 px-4 py-4">
+          <div key={item.id} className="flex items-center px-4 py-4" style={{ borderBottom: '1px solid var(--sq-line)' }}>
             <div className="flex-1 min-w-0">
-              <p className="font-medium text-sm text-gray-900 truncate">{item.name}</p>
-              {item.category && <p className="text-xs text-gray-400">{item.category.name}</p>}
-              <p className="text-sm text-orange-600 font-semibold">Rs. {Number(item.price).toFixed(2)}</p>
+              <p className="font-semibold text-sm truncate" style={{ color: 'var(--sq-ink)' }}>{item.name}</p>
+              {item.category && <p className="text-xs" style={{ color: 'var(--sq-muted)' }}>{item.category.name}</p>}
+              <p className="text-sm font-bold" style={{ color: 'var(--sq-accent)' }}>Rs. {Number(item.price).toFixed(2)}</p>
             </div>
             <button onClick={() => toggleAvailability(item)}
-              className={`text-xs font-semibold px-2 py-0.5 rounded-full transition ${item.isAvailable ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-400'}`}>
+              className="text-xs font-semibold rounded-full px-3 py-1 cursor-pointer transition mr-3"
+              style={item.isAvailable
+                ? { background: '#D1FAE5', color: '#065F46' }
+                : { background: 'var(--sq-fill)', color: 'var(--sq-muted)' }}>
               {item.isAvailable ? 'Available' : 'Hidden'}
             </button>
-            <button onClick={() => deleteItem(item.id)} className="text-red-400 hover:text-red-600 text-sm px-1">✕</button>
+            <button onClick={() => deleteItem(item.id)}
+              className="text-sm px-2 transition hover:text-red-500"
+              style={{ color: 'var(--sq-muted)' }}>✕</button>
           </div>
         ))}
         {!loading && items.length === 0 && (
-          <p className="text-center text-gray-400 py-12 text-sm">No menu items yet. Add your first item above.</p>
+          <p className="text-center py-12 text-sm" style={{ color: 'var(--sq-muted)' }}>No menu items yet. Add your first item above.</p>
         )}
       </div>
     </div>

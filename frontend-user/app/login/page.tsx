@@ -9,6 +9,7 @@ export default function LoginPage() {
   const router = useRouter();
   const [phone, setPhone] = useState('');
   const [otp, setOtp] = useState('');
+  const [otpDigits, setOtpDigits] = useState(['', '', '', '', '', '']);
   const [step, setStep] = useState<'phone' | 'otp'>('phone');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -42,59 +43,135 @@ export default function LoginPage() {
     }
   }
 
+  function handleOtpDigit(index: number, value: string) {
+    if (value.length > 1) return;
+    const next = [...otpDigits];
+    next[index] = value;
+    setOtpDigits(next);
+    const combined = next.join('');
+    setOtp(combined);
+    if (value && index < 5) {
+      const nextInput = document.getElementById(`otp-${index + 1}`);
+      (nextInput as HTMLInputElement)?.focus();
+    }
+  }
+
+  function handleOtpKeyDown(index: number, e: React.KeyboardEvent<HTMLInputElement>) {
+    if (e.key === 'Backspace' && !otpDigits[index] && index > 0) {
+      const prev = document.getElementById(`otp-${index - 1}`);
+      (prev as HTMLInputElement)?.focus();
+    }
+  }
+
   return (
-    <div className="min-h-screen flex items-center justify-center bg-orange-50 px-4">
-      <div className="w-full max-w-sm bg-white rounded-2xl shadow-sm p-8">
-        <h1 className="text-2xl font-bold text-orange-600 mb-1">SkipQ</h1>
-        <p className="text-gray-500 text-sm mb-6">Skip the queue, not the food.</p>
+    <div className="min-h-screen flex items-center justify-center px-4" style={{ background: 'var(--sq-paper)' }}>
+      <div className="w-full max-w-sm rounded-2xl p-8" style={{ background: 'var(--sq-white)', border: '1px solid var(--sq-line)' }}>
+        {/* Header */}
+        <div className="mb-8">
+          <h1 className="text-3xl font-bold mb-1" style={{ color: 'var(--sq-ink)' }}>SkipQ</h1>
+          <p className="text-sm" style={{ color: 'var(--sq-muted)' }}>Skip the line. Order ahead.</p>
+        </div>
 
         {step === 'phone' ? (
           <form onSubmit={sendOtp} className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Phone number</label>
+              <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--sq-ink2)' }}>
+                Mobile number
+              </label>
               <input
                 type="tel"
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
                 placeholder="+91 98765 43210"
                 required
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400"
+                className="w-full px-4 py-3 text-sm rounded-xl focus:outline-none"
+                style={{
+                  border: '1px solid var(--sq-line)',
+                  color: 'var(--sq-ink)',
+                  background: 'var(--sq-white)',
+                }}
+                onFocus={(e) => (e.target.style.borderColor = 'var(--sq-accent)')}
+                onBlur={(e) => (e.target.style.borderColor = 'var(--sq-line)')}
               />
             </div>
-            {error && <p className="text-red-500 text-sm">{error}</p>}
+            {error && <p className="text-sm" style={{ color: '#DC2626' }}>{error}</p>}
             <button
               type="submit"
               disabled={loading}
-              className="w-full bg-orange-500 hover:bg-orange-600 text-white font-medium py-2 rounded-lg text-sm transition disabled:opacity-50"
+              className="w-full py-3 rounded-xl font-semibold text-sm transition"
+              style={{
+                background: loading ? 'var(--sq-accent)' : 'var(--sq-accent)',
+                color: 'var(--sq-white)',
+                opacity: loading ? 0.4 : 1,
+              }}
+              onMouseEnter={(e) => { if (!loading) (e.currentTarget.style.background = 'var(--sq-accent-dark)'); }}
+              onMouseLeave={(e) => { (e.currentTarget.style.background = 'var(--sq-accent)'); }}
             >
-              {loading ? 'Sending...' : 'Send OTP'}
+              {loading ? 'Sending...' : 'Send code'}
             </button>
           </form>
         ) : (
-          <form onSubmit={verifyOtp} className="space-y-4">
-            <p className="text-sm text-gray-600">OTP sent to <strong>{phone}</strong></p>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Enter OTP</label>
-              <input
-                type="text"
-                value={otp}
-                onChange={(e) => setOtp(e.target.value)}
-                placeholder="6-digit code"
-                maxLength={6}
-                required
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 tracking-widest"
-              />
+          <form onSubmit={verifyOtp} className="space-y-5">
+            <p className="text-sm" style={{ color: 'var(--sq-ink2)' }}>
+              OTP sent to {phone}{' '}
+              <button
+                type="button"
+                onClick={() => setStep('phone')}
+                className="underline"
+                style={{ color: 'var(--sq-accent)' }}
+              >
+                Edit
+              </button>
+            </p>
+
+            {/* 6-digit OTP boxes */}
+            <div className="flex gap-2 justify-between">
+              {otpDigits.map((digit, i) => (
+                <input
+                  key={i}
+                  id={`otp-${i}`}
+                  type="text"
+                  inputMode="numeric"
+                  maxLength={1}
+                  value={digit}
+                  onChange={(e) => handleOtpDigit(i, e.target.value)}
+                  onKeyDown={(e) => handleOtpKeyDown(i, e)}
+                  className="w-10 h-12 text-center text-lg font-bold rounded-xl focus:outline-none"
+                  style={{
+                    border: '1px solid var(--sq-line)',
+                    color: 'var(--sq-ink)',
+                    background: 'var(--sq-white)',
+                  }}
+                  onFocus={(e) => (e.target.style.borderColor = 'var(--sq-accent)')}
+                  onBlur={(e) => (e.target.style.borderColor = 'var(--sq-line)')}
+                />
+              ))}
             </div>
-            {error && <p className="text-red-500 text-sm">{error}</p>}
+
+            {error && <p className="text-sm" style={{ color: '#DC2626' }}>{error}</p>}
+
             <button
               type="submit"
-              disabled={loading}
-              className="w-full bg-orange-500 hover:bg-orange-600 text-white font-medium py-2 rounded-lg text-sm transition disabled:opacity-50"
+              disabled={loading || otp.length < 6}
+              className="w-full py-3 rounded-xl font-semibold text-sm transition"
+              style={{
+                background: 'var(--sq-accent)',
+                color: 'var(--sq-white)',
+                opacity: loading || otp.length < 6 ? 0.4 : 1,
+              }}
+              onMouseEnter={(e) => { if (!loading && otp.length === 6) (e.currentTarget.style.background = 'var(--sq-accent-dark)'); }}
+              onMouseLeave={(e) => { (e.currentTarget.style.background = 'var(--sq-accent)'); }}
             >
-              {loading ? 'Verifying...' : 'Verify OTP'}
+              {loading ? 'Verifying...' : 'Verify & continue'}
             </button>
-            <button type="button" onClick={() => setStep('phone')} className="w-full text-sm text-gray-500 hover:text-gray-700">
-              Change number
+
+            <button
+              type="button"
+              onClick={() => { setStep('phone'); setOtpDigits(['', '', '', '', '', '']); setOtp(''); }}
+              className="block text-sm"
+              style={{ color: 'var(--sq-muted)' }}
+            >
+              ← Change number
             </button>
           </form>
         )}

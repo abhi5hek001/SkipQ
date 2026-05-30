@@ -24,10 +24,11 @@ export default function RegisterPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-900 px-4">
-      <div className="w-full max-w-sm bg-white rounded-2xl shadow-lg p-8">
-        <h1 className="text-xl font-bold text-gray-900 mb-1">Set up your vendor profile</h1>
-        <p className="text-gray-400 text-sm mb-6">This is a one-time setup.</p>
+    <div className="min-h-screen flex items-center justify-center px-4" style={{ background: 'var(--sq-paper)' }}>
+      <div className="w-full max-w-sm bg-white rounded-2xl p-8" style={{ border: '1px solid var(--sq-line)' }}>
+        <div className="w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold text-white" style={{ background: 'var(--sq-ink)' }}>Q</div>
+        <h1 className="text-lg font-bold mt-3" style={{ color: 'var(--sq-ink)' }}>Set up your stall</h1>
+        <p className="text-sm mb-6" style={{ color: 'var(--sq-muted)' }}>One-time setup</p>
         <form onSubmit={submit} className="space-y-4">
           {[
             { label: 'Business name', key: 'businessName', type: 'text', placeholder: 'e.g. Chai Corner' },
@@ -35,15 +36,17 @@ export default function RegisterPage() {
             { label: 'Phone', key: 'phone', type: 'tel', placeholder: '+91 98765 43210' },
           ].map(({ label, key, type, placeholder }) => (
             <div key={key}>
-              <label className="block text-sm font-medium text-gray-700 mb-1">{label}</label>
+              <label className="block text-xs font-medium mb-1" style={{ color: 'var(--sq-ink2)' }}>{label}</label>
               <input type={type} value={form[key as keyof typeof form]} onChange={set(key)}
                 placeholder={placeholder} required
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-800" />
+                className="w-full rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2"
+                style={{ border: '1px solid var(--sq-line)' }} />
             </div>
           ))}
           {error && <p className="text-red-500 text-sm">{error}</p>}
           <button type="submit" disabled={loading}
-            className="w-full bg-gray-900 hover:bg-gray-700 text-white font-medium py-2 rounded-lg text-sm disabled:opacity-50">
+            className="w-full text-white font-semibold py-3 rounded-xl text-sm transition disabled:opacity-50 hover:opacity-80"
+            style={{ background: 'var(--sq-ink)' }}>
             {loading ? 'Saving...' : 'Create Profile'}
           </button>
         </form>
