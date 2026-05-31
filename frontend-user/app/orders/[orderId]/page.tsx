@@ -136,16 +136,6 @@ export default function OrderStatusPage() {
           name: payment.customerName ?? '',
           email: 'customer@skipq.app',
         },
-        config: {
-          display: {
-            blocks: {
-              upi: { name: 'Pay via UPI', instruments: [{ method: 'upi' }] },
-              other: { name: 'Other methods', instruments: [{ method: 'card' }, { method: 'netbanking' }, { method: 'wallet' }] },
-            },
-            sequence: ['block.upi', 'block.other'],
-            preferences: { show_default_blocks: false },
-          },
-        },
         theme: { color: '#f97316' },
         handler: async () => {
           setPaying(false);
